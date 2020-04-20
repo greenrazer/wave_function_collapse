@@ -234,7 +234,7 @@ class WFCState:
             cell = self.grid[cell_index]
             if not cell.collapsed:
                 return cell_index
-        print("shouldnt be here")
+        raise RuntimeError("Entropy heap empty")
 
     def collapse_cell_at(self, loc):
         (collapsed_to, possible_ind) = self.grid[loc].collapse()
@@ -282,8 +282,7 @@ class WFCState:
                         if neighbor_cell.possible[adj]:
                             neighbor_cell.remove_possibility(adj)
                             if not any(neighbor_cell.possible):
-                                print("Contradiction! Restarting...")
-                                raise RuntimeError
+                                raise RuntimeError("Hit a contradiction and cannot continue.")
                             heapq.heappush(self.entropy_heap, (neighbor_cell.entropy(), neighbor_index))
                             self.removal_stack.append((adj,neighbor_index))
 
@@ -313,7 +312,7 @@ def main(input_filename, output_filename, tile_size, output_size, rotate):
             wfc_state.run()
             keep_going = False
         except RuntimeError:
-            pass
+            print("Contradiction! Restarting...")
     
     if image_processor.image.mode == 'RGB':
         pix_len = 3
