@@ -87,17 +87,22 @@ class ImageProcessor:
         self.get_adjacencys()
     
     def get_frequencies(self):
+        if self.rotation:
+            imgs = [self.image, self.image.transpose(Image.ROTATE_90), self.image.transpose(Image.ROTATE_180), self.image.transpose(Image.ROTATE_270)]
+        else:
+            imgs = [self.image]
+        
         tile_to_ind = {}
-
-        for x in range(0, self.image.width - self.tile_size[0] + 1):
-            for y in range(0, self.image.height - self.tile_size[1] + 1):
-                cropped_im = self.image.crop((x,y,x+self.tile_size[0], y+self.tile_size[1]))
-                im_hash = cropped_im.tobytes()
-                if im_hash not in tile_to_ind:
-                    self.tiles.append(cropped_im)
-                    self.top_left_pixels.append(cropped_im.getpixel((0,0)))
-                    tile_to_ind[im_hash] = len(self.tiles)-1
-                self.frequencies.add(tile_to_ind[im_hash])
+        for img in imgs:
+            for x in range(0, img.width - self.tile_size[0] + 1):
+                for y in range(0, img.height - self.tile_size[1] + 1):
+                    cropped_im = img.crop((x,y,x+self.tile_size[0], y+self.tile_size[1]))
+                    im_hash = cropped_im.tobytes()
+                    if im_hash not in tile_to_ind:
+                        self.tiles.append(cropped_im)
+                        self.top_left_pixels.append(cropped_im.getpixel((0,0)))
+                        tile_to_ind[im_hash] = len(self.tiles)-1
+                    self.frequencies.add(tile_to_ind[im_hash])
     
     def compatible(self, tile1_ind:int, tile2_ind:int, direction:Direction) -> bool:
         if direction == Direction.UP:
@@ -277,7 +282,7 @@ class WFCState:
                         if neighbor_cell.possible[adj]:
                             neighbor_cell.remove_possibility(adj)
                             if not any(neighbor_cell.possible):
-                                print("ERRRRRRR")
+                                print("Contradiction! Restarting...")
                                 raise RuntimeError
                             heapq.heappush(self.entropy_heap, (neighbor_cell.entropy(), neighbor_index))
                             self.removal_stack.append((adj,neighbor_index))
@@ -294,11 +299,11 @@ class WFCState:
             self.uncollapsed -= 1
 
 
-def main(filename, tile_size, output_size):
-    image_processor = ImageProcessor(filename, tile_size, False)
+def main(input_filename, output_filename, tile_size, output_size, rotate):
+    image_processor = ImageProcessor(input_filename, tile_size, rotate)
 
-    keep = True
-    while keep:
+    keep_going = True
+    while keep_going:
         try:
             wfc_state = WFCState(
                 len(image_processor.tiles), 
@@ -306,41 +311,37 @@ def main(filename, tile_size, output_size):
                 image_processor.frequencies, 
                 output_size)
             wfc_state.run()
-            keep = False
+            keep_going = False
         except RuntimeError:
             pass
+    
+    if image_processor.image.mode == 'RGB':
+        pix_len = 3
+    else:
+        pix_len = 4
 
-    output = [0 for _ in range(len(wfc_state.grid))]
+    output = np.zeros((np.prod(output_size), pix_len))    
     for coord, cell in enumerate(wfc_state.grid):
         tile_index = [i for i, x in enumerate(cell.possible) if x][0]
-        output[coord] = tile_index
+        output[coord] = image_processor.top_left_pixels[tile_index]
+    output = output.reshape(output_size + (pix_len,)).astype(np.uint8)
 
-    out = np.array([image_processor.top_left_pixels[i] for i in output])
-    out = out.reshape(output_size + (3,))
-    img1 = Image.fromarray(out.astype(np.uint8))
-    img1.save("bbbb.png")
-
-    out = [image_processor.tiles[i] for i in output]
-
-    img2 = Image.new('RGB', (output_size[0]*3,output_size[1]*3), (0,0,0))
-    loc = 0
-    for o in out:
-        x = loc % output_size[0]
-        y = loc // output_size[0]
-        img2.paste(o, (x*3,y*3))
-        loc += 1
-
-    img2.save("aaaa.png")
+    img = Image.fromarray(output)
+    img.save(output_filename)
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Wave function colapse algorithm.')
-    parser.add_argument('filename', type=str, help='Filename.')
+    parser.add_argument('input_filename', type=str, help='Input Filename.')
+    parser.add_argument('output_filename', type=str, help='Output Filename.')
     parser.add_argument('-tw', '--tile_width', type=int, default=3, help='Tile size width.')
     parser.add_argument('-th', '--tile_height', type=int, default=3, help='Tile size height.')
     parser.add_argument('-ow', '--output_width', type=int, default=20, help='Output size width.')
     parser.add_argument('-oh', '--output_height', type=int, default=20, help='Output size height.')
+    parser.add_argument('-r', '--rotate', default=False, action='store_true', help="Use all rotated input image tiles.")
+    parser.add_argument('-s', '--seed', type=int, default=0, help='Output size height.')
     args = parser.parse_args()
 
-    random.seed(10)
+    if args.seed:
+        random.seed(args.seed)
 
-    main(args.filename, (args.tile_width, args.tile_height), (args.output_width, args.output_height))
+    main(args.input_filename, args.output_filename, (args.tile_width, args.tile_height), (args.output_width, args.output_height), args.rotate)
