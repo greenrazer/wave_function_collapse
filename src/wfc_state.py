@@ -2,8 +2,8 @@ import random
 import heapq
 import copy
 import numpy as np
-from direction import Direction
-from wfc_cell import WFCCell
+from src.direction import Direction
+from src.wfc_cell import WFCCell
 
 class WFCState:
     def __init__(self, num_tiles, adjacencies, frequencies, output_size):

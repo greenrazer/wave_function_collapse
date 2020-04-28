@@ -1,7 +1,7 @@
 from PIL import Image
-from direction import Direction
-from frequency_rules import FrequencyRules
-from adjacency_rules import AdjacencyRules
+from src.direction import Direction
+from src.frequency_rules import FrequencyRules
+from src.adjacency_rules import AdjacencyRules
 
 class ImageProcessor:
     def __init__(self, filename, tile_size=(3,3), rotation=False):

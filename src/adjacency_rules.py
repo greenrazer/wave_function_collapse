@@ -1,5 +1,5 @@
-from direction import Direction
 from typing import List
+from src.direction import Direction
 
 class AdjacencyRules:
     def __init__(self):

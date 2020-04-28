@@ -3,9 +3,9 @@ import numpy as np
 import random
 from PIL import Image
 
-from image_processor import ImageProcessor
-from image_builder import ImageBuilder
-from wfc_state import WFCState as WFC
+from src.image_processor import ImageProcessor
+from src.image_builder import ImageBuilder
+from src.wfc_state import WFCState as WFC
 
 def main(input_filename, output_filename, tile_size, output_size, rotate):
     image_processor = ImageProcessor(input_filename, tile_size, rotate)
